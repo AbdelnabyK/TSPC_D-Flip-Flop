@@ -1,0 +1,65 @@
+`default_nettype none
+//`define VAMS_ELEC_DIS_ONLY
+`include "disciplines.vams"
+
+module INV ( VDD , VSS , A , Y );
+  inout       VDD ,  VSS ,  A , Y ;
+  parameter real WN=145e-9 ;
+  parameter real WP=214e-9 ;
+   
+  electrical VDD ;
+  electrical VSS ;
+  electrical A ;
+  electrical Y ;
+  g45n1svt #( .l(4.5e-08), .w(WN))  mn0 ( .d(Y) , .g(A) , .s(VSS), .b(VSS));
+  g45p1svt #( .l(4.5e-08), .w(WP))  mp0 ( .d(Y) , .g(A) , .s(VDD) , .b(VDD));
+endmodule
+
+module TSPCFFF ( VDD , VSS , CK , D , QQ );  
+  inout       VDD , VSS , CK , D , QQ;       
+  electrical VDD ;
+  electrical VSS ;
+  electrical CK ;
+  electrical D ;
+  electrical QQ;                          
+  // internal signals
+  electrical x, a, b, y, c, Qb, CKb;
+ 
+  // customizable WN and WP
+  parameter real WN_CK = 145e-9;
+  parameter real WP_CK = 215e-9;
+  parameter real WN_Q = 260e-9;
+  parameter real WP_Q = 390e-9; 
+
+  parameter real WN=145e-9 ;
+  parameter real WP=214e-9 ;
+
+  // Transistor definitions
+  
+  //stage 1
+   g45p1svt #( .l(4.5e-08), .w(WP ) ) MP1 ( .d(x), .g(D), .s(VDD), .b(VDD) );
+   g45n1svt #( .l(4.5e-08), .w(WN ) ) MN4 ( .d(x), .g(CKb), .s(a), .b(VSS) );
+   g45n1svt #( .l(4.5e-08), .w(WN) ) MN1 ( .d(a), .g(D), .s(VSS), .b(VSS) );
+   
+   //stage 2
+   g45p1svt #( .l(4.5e-08), .w(WP ) ) MP2 ( .d(b), .g(CKb), .s(VDD), .b(VDD) );
+   g45p1svt #( .l(4.5e-08), .w(WP ) ) MP4 ( .d(y), .g(x), .s(b), .b(VDD) );
+   g45n1svt #( .l(4.5e-08), .w(WN) ) MN2 ( .d(y), .g(CKb), .s(VSS), .b(VSS) );
+   
+   //stage 3
+    g45p1svt #( .l(4.5e-08), .w(WP ) ) MP3 ( .d(c), .g(y), .s(VDD), .b(VDD) );
+    g45p1svt #( .l(4.5e-08), .w(WP ) ) MP5 ( .d(Qb), .g(CKb), .s(c), .b(VDD) );
+    g45n1svt #( .l(4.5e-08), .w(WN) ) MN3 ( .d(Qb), .g(y), .s(VSS), .b(VSS) );
+  
+ 
+  // CK inverter
+  INV #(.WN(WN_CK), .WP(WP_CK)) INV_CK (
+    .A(CK), .Y(CKb), .VDD(VDD), .VSS(VSS)
+  );
+
+  // Q output inverter
+  INV #(.WN(WN_Q), .WP(WP_Q)) INV_Q (
+    .A(Qb), .Y(QQ), .VDD(VDD), .VSS(VSS) 
+  );
+
+endmodule
